@@ -11,9 +11,10 @@ interface ContributorStatsData {
 
 interface ContributorStatsTableProps {
   contributors: Record<string, ContributorStatsData>;
+  onContributorClick: (contributorName: string) => void; // Add prop for click handling
 }
 
-const ContributorStatsTable: React.FC<ContributorStatsTableProps> = ({ contributors }) => {
+const ContributorStatsTable: React.FC<ContributorStatsTableProps> = ({ contributors, onContributorClick }) => {
   const contributorNames = Object.keys(contributors);
 
   if (contributorNames.length === 0) {
@@ -27,7 +28,7 @@ const ContributorStatsTable: React.FC<ContributorStatsTableProps> = ({ contribut
         <thead className="bg-gray-50 dark:bg-gray-700">
           <tr>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Contributor
+              Contributor (Click to Filter)
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               Commits
@@ -53,7 +54,13 @@ const ContributorStatsTable: React.FC<ContributorStatsTableProps> = ({ contribut
             return (
               <tr key={name} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {name}
+                  {/* Make contributor name clickable */}
+                  <button 
+                    onClick={() => onContributorClick(name)} 
+                    className="text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+                  >
+                    {name}
+                  </button>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                   {stats.commits}

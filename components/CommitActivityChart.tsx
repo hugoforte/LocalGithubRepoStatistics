@@ -81,6 +81,7 @@ const CommitActivityChart: React.FC<CommitActivityChartProps> = ({ commitActivit
         type: 'time' as const, // Use time scale
         time: {
           unit: 'day' as const, // Display units in days
+          minUnit: 'day' as const, // *** Force daily unit minimum ***
           tooltipFormat: 'PPP', // Format for tooltips (e.g., 'Jan 1, 2024')
           displayFormats: {
              day: 'MMM d' // Format for axis labels (e.g., 'Jan 1')
@@ -95,6 +96,8 @@ const CommitActivityChart: React.FC<CommitActivityChartProps> = ({ commitActivit
             color: '#cbd5e1', // Light gray for dark mode ticks
             maxRotation: 45,
             minRotation: 45,
+            // autoSkip: true, // Allow Chart.js to skip labels if too crowded
+            // maxTicksLimit: 31 // Limit ticks if needed, but might conflict with daily goal
          },
          grid: {
             color: '#374151', // Darker grid lines for dark mode
