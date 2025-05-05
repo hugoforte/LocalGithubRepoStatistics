@@ -1,7 +1,7 @@
 	'use client';
 
 import React, { useState, useEffect } from 'react';
-import { subDays, format } from 'date-fns'; // Import date-fns functions
+import { subDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 interface FiltersProps {
   allContributors: string[];
@@ -21,38 +21,49 @@ const Filters: React.FC<FiltersProps> = ({ allContributors, currentFilters, onFi
     setSelectedContributor(currentFilters.contributor || '');
   }, [currentFilters]);
 
-  const handleApplyFilters = () => {
-    onFilterChange({
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-      contributor: selectedContributor || undefined,
-    });
+  const applyFilters = (newFilters: { startDate?: string; endDate?: string; contributor?: string }) => {
+    onFilterChange(newFilters);
   };
 
   const handleClearFilters = () => {
     setStartDate('');
     setEndDate('');
     setSelectedContributor('');
-    onFilterChange({}); // Apply empty filters
+    applyFilters({});
   };
 
-  const setPresetDateRange = (preset: 'last_week' | 'last_month') => {
+  const setLastWeek = () => {
     const today = new Date();
-    const endDateFormatted = format(today, 'yyyy-MM-dd');
-    let startDateFormatted = '';
-
-    if (preset === 'last_week') {
-      startDateFormatted = format(subDays(today, 7), 'yyyy-MM-dd');
-    } else if (preset === 'last_month') {
-      startDateFormatted = format(subDays(today, 30), 'yyyy-MM-dd'); // Approximation for last month
-      // Alternatively, use subMonths(today, 1) for calendar month
-    }
-
+    const lastWeekEnd = startOfWeek(today, { weekStartsOn: 0 }); // Get start of current week (Sunday)
+    const lastWeekStart = startOfWeek(subDays(lastWeekEnd, 7), { weekStartsOn: 0 }); // Get start of last week
+    
+    const startDateFormatted = format(lastWeekStart, 'yyyy-MM-dd');
+    const endDateFormatted = format(endOfWeek(lastWeekStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+    
     setStartDate(startDateFormatted);
     setEndDate(endDateFormatted);
+    applyFilters({
+      startDate: startDateFormatted,
+      endDate: endDateFormatted,
+      contributor: selectedContributor || undefined,
+    });
+  };
 
-    // Optionally apply filters immediately or wait for Apply button
-    // For now, just set the dates, user needs to click Apply
+  const setLastMonth = () => {
+    const today = new Date();
+    const lastMonthStart = startOfMonth(subMonths(today, 1));
+    const lastMonthEnd = endOfMonth(lastMonthStart);
+    
+    const startDateFormatted = format(lastMonthStart, 'yyyy-MM-dd');
+    const endDateFormatted = format(lastMonthEnd, 'yyyy-MM-dd');
+    
+    setStartDate(startDateFormatted);
+    setEndDate(endDateFormatted);
+    applyFilters({
+      startDate: startDateFormatted,
+      endDate: endDateFormatted,
+      contributor: selectedContributor || undefined,
+    });
   };
 
   return (
@@ -66,16 +77,16 @@ const Filters: React.FC<FiltersProps> = ({ allContributors, currentFilters, onFi
           </label>
           <div className="flex gap-2">
             <button
-              onClick={() => setPresetDateRange('last_week')}
+              onClick={setLastWeek}
               className="flex-1 px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition duration-150 ease-in-out"
             >
-              Last 7 Days
+              Last Week
             </button>
             <button
-              onClick={() => setPresetDateRange('last_month')}
+              onClick={setLastMonth}
               className="flex-1 px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition duration-150 ease-in-out"
             >
-              Last 30 Days
+              Last Month
             </button>
           </div>
         </div>
@@ -89,7 +100,14 @@ const Filters: React.FC<FiltersProps> = ({ allContributors, currentFilters, onFi
             type="date"
             id="startDate"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              applyFilters({
+                startDate: e.target.value || undefined,
+                endDate: endDate || undefined,
+                contributor: selectedContributor || undefined,
+              });
+            }}
             className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -103,7 +121,14 @@ const Filters: React.FC<FiltersProps> = ({ allContributors, currentFilters, onFi
             type="date"
             id="endDate"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              applyFilters({
+                startDate: startDate || undefined,
+                endDate: e.target.value || undefined,
+                contributor: selectedContributor || undefined,
+              });
+            }}
             className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -119,7 +144,14 @@ const Filters: React.FC<FiltersProps> = ({ allContributors, currentFilters, onFi
           <select
             id="contributor"
             value={selectedContributor}
-            onChange={(e) => setSelectedContributor(e.target.value)}
+            onChange={(e) => {
+              setSelectedContributor(e.target.value);
+              applyFilters({
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+                contributor: e.target.value || undefined,
+              });
+            }}
             className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Contributors</option>
@@ -136,12 +168,6 @@ const Filters: React.FC<FiltersProps> = ({ allContributors, currentFilters, onFi
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <button
-            onClick={handleApplyFilters}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-150 ease-in-out"
-          >
-            Apply Filters
-          </button>
           <button
             onClick={handleClearFilters}
             className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition duration-150 ease-in-out"

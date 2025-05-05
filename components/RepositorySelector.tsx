@@ -46,8 +46,9 @@ const RepositorySelector: React.FC<RepositorySelectorProps> = ({ onRepositorySel
     });
   };
 
-  const handleValidate = async () => {
-    if (!repoPath) {
+  const handleValidate = async (pathToValidate?: string) => {
+    const path = pathToValidate || repoPath;
+    if (!path) {
       setError('Please enter a repository path.');
       setIsValid(false);
       return;
@@ -62,7 +63,7 @@ const RepositorySelector: React.FC<RepositorySelectorProps> = ({ onRepositorySel
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ repoPath }),
+        body: JSON.stringify({ repoPath: path }),
       });
 
       const data = await response.json();
@@ -88,7 +89,7 @@ const RepositorySelector: React.FC<RepositorySelectorProps> = ({ onRepositorySel
 
   const handleRecentRepoSelect = (path: string) => {
     setRepoPath(path);
-    handleValidate();
+    handleValidate(path);
   };
 
   return (
@@ -121,7 +122,7 @@ const RepositorySelector: React.FC<RepositorySelectorProps> = ({ onRepositorySel
             disabled={isValidating}
           />
           <button
-            onClick={handleValidate}
+            onClick={() => handleValidate()}
             disabled={isValidating}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
           >
