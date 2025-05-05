@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Local Git Stats
+
+A Next.js application that provides detailed statistics and visualizations for local Git repositories. The app allows you to analyze commit history, contributor activity, and generate CSV exports of repository statistics.
+
+## Features
+
+- **Repository Selection**: Browse and select local Git repositories
+- **Contributor Statistics**: View detailed stats per contributor including:
+  - Number of commits
+  - Lines added/deleted
+  - Files changed
+- **Commit Activity Visualization**: Interactive chart showing commit activity over time
+- **Filtering Capabilities**:
+  - Filter by date range
+  - Filter by specific contributor
+  - Click on contributor names to filter their activity
+- **CSV Export**: Download detailed daily statistics in CSV format
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
 
+3. Run the development server:
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Technical Details
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Built with Next.js 14 and TypeScript
+- Uses React for the frontend
+- Implements server-side API routes for Git operations
+- Features responsive design with dark mode support
+- Uses modern web technologies for data visualization
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `/app`: Next.js app router pages and API routes
+- `/components`: Reusable React components
+  - `RepositorySelector`: Repository selection interface
+  - `ContributorStatsTable`: Tabular display of contributor statistics
+  - `CommitActivityChart`: Visualization of commit activity
+  - `Filters`: Date and contributor filtering interface
+- `/lib`: Utility functions and shared code
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application is built with modern web development practices and can be extended with additional features. The main entry point is `app/page.tsx`, which handles the core application logic and state management.

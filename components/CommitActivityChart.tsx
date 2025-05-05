@@ -81,10 +81,10 @@ const CommitActivityChart: React.FC<CommitActivityChartProps> = ({ commitActivit
         type: 'time' as const, // Use time scale
         time: {
           unit: 'day' as const, // Display units in days
-          minUnit: 'day' as const, // *** Force daily unit minimum ***
-          tooltipFormat: 'PPP', // Format for tooltips (e.g., 'Jan 1, 2024')
+          minUnit: 'day' as const, // Force daily unit minimum
+          tooltipFormat: 'PPP (EEEE)', // Format for tooltips (e.g., 'Jan 1, 2024 (Monday)')
           displayFormats: {
-             day: 'MMM d' // Format for axis labels (e.g., 'Jan 1')
+             day: 'MMM d (EEE)' // Format for axis labels (e.g., 'Jan 1 (Mon)')
           }
         },
         title: {

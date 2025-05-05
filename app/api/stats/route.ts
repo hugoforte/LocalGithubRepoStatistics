@@ -140,6 +140,26 @@ async function parseGitLog(git: SimpleGit, options?: { from?: string; to?: strin
     .map(([date, count]) => ({ date, count }))
     .sort((a, b) => a.date.localeCompare(b.date)); // Sort by date
 
+  // Add zero records for missing days
+  if (stats.commitActivity.length > 0) {
+    const startDate = new Date(stats.commitActivity[0].date);
+    const endDate = new Date(stats.commitActivity[stats.commitActivity.length - 1].date);
+    const allDates = new Set<string>();
+    
+    // Generate all dates in range
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      allDates.add(d.toISOString().split('T')[0]);
+    }
+    
+    // Add zero records for missing dates
+    const completeActivity = Array.from(allDates).map(date => ({
+      date,
+      count: commitCountsByDate[date] || 0
+    })).sort((a, b) => a.date.localeCompare(b.date));
+    
+    stats.commitActivity = completeActivity;
+  }
+
   // Add sorted list of all unique contributors
   stats.allContributors = Array.from(allContributorsSet).sort();
 
