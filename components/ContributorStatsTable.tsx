@@ -6,7 +6,7 @@ interface ContributorStatsData {
   commits: number;
   linesAdded: number;
   linesDeleted: number;
-  filesChanged: string[];
+  filesChanged: number; // Updated: Now a number (count)
 }
 
 interface ContributorStatsTableProps {
@@ -68,7 +68,7 @@ const ContributorStatsTable: React.FC<ContributorStatsTableProps> = ({ contribut
                   {netContribution >= 0 ? '+' : ''}{netContribution}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                  {stats.filesChanged.length}
+                  {stats.filesChanged} {/* Updated: Directly use the number */}
                 </td>
               </tr>
             );

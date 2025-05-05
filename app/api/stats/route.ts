@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import simpleGit, { SimpleGit, LogResult, DefaultLogFields } from 'simple-git';
+import simpleGit, { SimpleGit, LogResult } from 'simple-git';
 import path from 'path';
 import fs from 'fs';
 
@@ -8,7 +8,7 @@ interface ContributorStats {
   commits: number;
   linesAdded: number;
   linesDeleted: number;
-  filesChanged: Set<string>;
+  filesChanged: Set<string>; // Use Set for uniqueness, convert later
 }
 
 // Define structure for overall stats
@@ -16,41 +16,72 @@ interface RepoStats {
   totalCommits: number;
   contributors: Record<string, ContributorStats>;
   commitActivity: { date: string; count: number }[];
-  // Add more stats as needed based on spec (e.g., language distribution - harder locally)
+  allContributors: string[]; // Add list of all contributors for filtering UI
+}
+
+// Define the expected structure of a commit log entry with diff stats
+// Based on simple-git types and --numstat output
+interface CommitLogEntry {
+  hash: string;
+  date: string;
+  message: string;
+  refs: string;
+  body: string;
+  author_name: string;
+  author_email: string;
+  diff?: {
+    added: number;
+    deleted: number;
+    files: {
+      file: string;
+      changes: number;
+      insertions: number;
+      deletions: number;
+      binary: boolean;
+    }[];
+  };
 }
 
 // Helper function to parse git log output for stats
-// Note: simple-git's default log format might not include line changes per commit directly.
-// We might need `git.show(['--stat', commit.hash])` for each commit, which can be slow.
-// Let's start with commit counts and basic info.
 async function parseGitLog(git: SimpleGit, options?: { from?: string; to?: string; author?: string }): Promise<RepoStats> {
   const logOptions: any = {
     '--all': null, // Look at all branches
     '--no-merges': null,
     '--numstat': null, // Provides added/deleted lines per file per commit
     '--date': 'iso-strict', // Consistent date format
+    // Explicitly define the format to ensure diff stats are parsed if possible
+    // format: '%H%x00%aN%x00%aE%x00%ad%x00%s',
+    // multiLine: true, // Needed if format is used
+    // '--stat': null // Alternative to --numstat, might be parsed differently
   };
 
   if (options?.from) logOptions['--since'] = options.from;
   if (options?.to) logOptions['--until'] = options.to;
-  // Filtering by author directly in log might be complex with multiple authors
-  // We'll filter after fetching all logs for simplicity in this example
+  // Author filtering will be done after fetching all logs
 
-  const log: LogResult<DefaultLogFields & { diff?: { added: number; deleted: number; files: { file: string }[] } }> = await git.log(logOptions);
+  // Fetch the log with the specified options
+  // Cast the result type to include the potential 'diff' property
+  const log: LogResult<CommitLogEntry> = await git.log(logOptions) as LogResult<CommitLogEntry>;
 
   const stats: RepoStats = {
-    totalCommits: log.total,
+    totalCommits: 0, // Will be calculated after filtering
     contributors: {},
     commitActivity: [],
+    allContributors: [],
   };
 
   const commitCountsByDate: Record<string, number> = {};
+  const allContributorsSet = new Set<string>();
 
   for (const commit of log.all) {
+    allContributorsSet.add(commit.author_name); // Collect all contributors before filtering
+
     // Filter by author if specified
     if (options?.author && commit.author_name !== options.author) {
       continue;
     }
+
+    stats.totalCommits++; // Increment total commits *after* filtering
 
     const author = commit.author_name;
     if (!stats.contributors[author]) {
@@ -58,24 +89,39 @@ async function parseGitLog(git: SimpleGit, options?: { from?: string; to?: strin
     }
     stats.contributors[author].commits++;
 
-    // Process --numstat output (added/deleted lines)
-    // The format is: <added>\t<deleted>\t<filepath>
-    // Binary files might show '-' instead of numbers.
-    if (commit.body) { // Check if body contains the numstat output (simple-git might parse it differently)
-        const lines = commit.body.split('\n');
-        lines.forEach(line => {
-            const parts = line.split('\t');
-            if (parts.length === 3) {
-                const added = parseInt(parts[0], 10);
-                const deleted = parseInt(parts[1], 10);
-                const file = parts[2];
-                if (!isNaN(added) && !isNaN(deleted)) {
-                    stats.contributors[author].linesAdded += added;
-                    stats.contributors[author].linesDeleted += deleted;
-                    stats.contributors[author].filesChanged.add(file);
-                }
+    // Process diff stats directly from the parsed 'diff' property
+    // This relies on simple-git correctly parsing --numstat output into commit.diff
+    if (commit.diff && commit.diff.files) {
+        commit.diff.files.forEach(fileChange => {
+            // Check if insertions/deletions are numbers (not binary files)
+            if (typeof fileChange.insertions === 'number' && typeof fileChange.deletions === 'number') {
+                stats.contributors[author].linesAdded += fileChange.insertions;
+                stats.contributors[author].linesDeleted += fileChange.deletions;
+                stats.contributors[author].filesChanged.add(fileChange.file);
             }
         });
+    } else {
+        // Fallback or alternative parsing if commit.diff is not populated as expected
+        // This might involve parsing commit.body or using git.show('--stat', commit.hash)
+        // For now, we'll log a warning if diff is missing, indicating potential simple-git parsing issue
+        // console.warn(`Diff stats not found for commit ${commit.hash}. Parsing commit.body as fallback.`);
+        // Fallback parsing from commit.body (less reliable)
+        if (commit.body) {
+            const lines = commit.body.trim().split('\n');
+            lines.forEach(line => {
+                const parts = line.split('\t');
+                if (parts.length === 3) {
+                    const added = parseInt(parts[0], 10);
+                    const deleted = parseInt(parts[1], 10);
+                    const file = parts[2];
+                    if (!isNaN(added) && !isNaN(deleted)) {
+                        stats.contributors[author].linesAdded += added;
+                        stats.contributors[author].linesDeleted += deleted;
+                        stats.contributors[author].filesChanged.add(file);
+                    }
+                }
+            });
+        }
     }
 
     // Aggregate commit activity by date (YYYY-MM-DD)
@@ -83,16 +129,19 @@ async function parseGitLog(git: SimpleGit, options?: { from?: string; to?: strin
     commitCountsByDate[commitDate] = (commitCountsByDate[commitDate] || 0) + 1;
   }
 
-  // Convert filesChanged Set to Array for JSON serialization
+  // Convert filesChanged Set to Array length for JSON serialization
   Object.values(stats.contributors).forEach(contrib => {
-    // @ts-ignore - Convert Set to Array
-    contrib.filesChanged = Array.from(contrib.filesChanged);
+    // @ts-ignore - Replace Set with its size
+    contrib.filesChanged = contrib.filesChanged.size;
   });
 
   // Format commit activity
   stats.commitActivity = Object.entries(commitCountsByDate)
     .map(([date, count]) => ({ date, count }))
     .sort((a, b) => a.date.localeCompare(b.date)); // Sort by date
+
+  // Add sorted list of all unique contributors
+  stats.allContributors = Array.from(allContributorsSet).sort();
 
   return stats;
 }
@@ -118,7 +167,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not a valid Git repository' }, { status: 400 });
     }
 
-    // Apply filters (example: date range, specific contributor)
+    // Apply filters
     const logOptions: { from?: string; to?: string; author?: string } = {};
     if (filters?.startDate) logOptions.from = filters.startDate;
     if (filters?.endDate) logOptions.to = filters.endDate;
@@ -130,7 +179,14 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Error fetching Git statistics:', error);
-    return NextResponse.json({ error: 'Failed to fetch Git statistics', details: error.message }, { status: 500 });
+    // Provide more specific error messages if possible
+    let errorMessage = 'Failed to fetch Git statistics';
+    if (error.message.includes('ENOENT')) {
+        errorMessage = 'Repository path not found or inaccessible.';
+    } else if (error.message.includes('Not a git repository')) {
+        errorMessage = 'The specified path is not a valid Git repository.';
+    }
+    return NextResponse.json({ error: errorMessage, details: error.message }, { status: 500 });
   }
 }
 
