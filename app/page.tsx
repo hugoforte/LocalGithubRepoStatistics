@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import RepositorySelector from '@/components/RepositorySelector';
 import ContributorStatsTable from '@/components/ContributorStatsTable';
 import CommitActivityChart from '@/components/CommitActivityChart';
+import CommitFrequencyStats from '@/components/CommitFrequencyStats';
 import Filters from '@/components/Filters';
 
 // Define structure for stats data (matching API response)
@@ -188,6 +189,7 @@ export default function Home() {
               <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Statistics for: <code className='bg-gray-200 dark:bg-gray-700 p-1 rounded text-sm'>{selectedRepoPath}</code></h2>
               <p className="text-gray-700 dark:text-gray-300">Total Commits Analyzed (matching filters): {repoStats.totalCommits}</p>
 
+              <CommitFrequencyStats commitActivity={repoStats.commitActivity} />
               <ContributorStatsTable 
                 contributors={repoStats.contributors} 
                 onContributorClick={handleContributorClick} 
