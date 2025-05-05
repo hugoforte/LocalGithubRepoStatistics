@@ -4,23 +4,21 @@ import React, { useState, useEffect } from 'react';
 import RepositorySelector from '@/components/RepositorySelector';
 import ContributorStatsTable from '@/components/ContributorStatsTable';
 import CommitActivityChart from '@/components/CommitActivityChart';
-import Filters from '@/components/Filters'; // Import Filters component
-import { format } from 'date-fns'; // For filename timestamp
-import path from 'path-browserify'; // Use path-browserify for client-side path manipulation
+import Filters from '@/components/Filters';
 
 // Define structure for stats data (matching API response)
 interface ContributorStatsData {
   commits: number;
   linesAdded: number;
   linesDeleted: number;
-  filesChanged: number; // Updated: Now a number (count)
+  filesChanged: number;
 }
 
 interface RepoStatsData {
   totalCommits: number;
   contributors: Record<string, ContributorStatsData>;
   commitActivity: { date: string; count: number }[];
-  allContributors: string[]; // Added for filter dropdown
+  allContributors: string[];
 }
 
 export default function Home() {
@@ -28,32 +26,26 @@ export default function Home() {
   const [repoStats, setRepoStats] = useState<RepoStatsData | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState<boolean>(false);
   const [statsError, setStatsError] = useState<string | null>(null);
-  // State for filters, initialized empty
   const [filters, setFilters] = useState<{ startDate?: string; endDate?: string; contributor?: string }>({});
   const [isDownloadingCsv, setIsDownloadingCsv] = useState<boolean>(false);
   const [csvError, setCsvError] = useState<string | null>(null);
 
   const handleRepositorySelected = (path: string) => {
     setSelectedRepoPath(path);
-    setRepoStats(null); // Clear previous stats
+    setRepoStats(null);
     setStatsError(null);
     setCsvError(null);
-    setFilters({}); // Reset filters when new repo is selected
-    fetchStats(path, {}); // Fetch initial stats without filters
+    setFilters({});
+    fetchStats(path, {});
   };
 
   const handleFilterChange = (newFilters: typeof filters) => {
     setFilters(newFilters);
-    // Refetch stats when filters change (handled by useEffect)
   };
 
-  // Handler for clicking a contributor name in the table
   const handleContributorClick = (contributorName: string) => {
-    // Update the filters state to include the selected contributor
-    // Keep existing date filters if any
     const newFilters = { ...filters, contributor: contributorName };
     setFilters(newFilters);
-    // The useEffect hook will automatically refetch stats with the new filter
   };
 
   const fetchStats = async (repoPath: string, currentFilters: typeof filters) => {
@@ -61,10 +53,9 @@ export default function Home() {
 
     setIsLoadingStats(true);
     setStatsError(null);
-    setCsvError(null); // Clear CSV error on new fetch
+    setCsvError(null);
 
     try {
-      // Fetch main stats data (JSON)
       const response = await fetch('/api/stats', {
         method: 'POST',
         headers: {
@@ -81,9 +72,9 @@ export default function Home() {
         setStatsError(data.error || 'Failed to fetch statistics.');
         setRepoStats(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching stats:', err);
-      setStatsError(`An unexpected error occurred: ${err.message}`);
+      setStatsError(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setRepoStats(null);
     } finally {
       setIsLoadingStats(false);
@@ -97,19 +88,17 @@ export default function Home() {
     setCsvError(null);
 
     try {
-      // Fetch CSV data from the dedicated endpoint
       const response = await fetch('/api/csv-export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ repoPath: selectedRepoPath, filters }), // Send current path and filters
+        body: JSON.stringify({ repoPath: selectedRepoPath, filters }),
       });
 
       if (response.ok) {
-        // Get filename from Content-Disposition header if available
         const disposition = response.headers.get('Content-Disposition');
-        let filename = 'git_stats_export.csv'; // Default filename
+        let filename = 'git_stats_export.csv';
         if (disposition && disposition.indexOf('attachment') !== -1) {
           const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
           const matches = filenameRegex.exec(disposition);
@@ -118,7 +107,6 @@ export default function Home() {
           }
         }
 
-        // Create a Blob from the response and trigger download
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -129,20 +117,17 @@ export default function Home() {
         a.remove();
         window.URL.revokeObjectURL(url);
       } else {
-        // Handle errors specifically for CSV download
         const errorData = await response.json();
         setCsvError(errorData.error || 'Failed to download CSV.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error downloading CSV:', err);
-      setCsvError(`An unexpected error occurred during CSV download: ${err.message}`);
+      setCsvError(`An unexpected error occurred during CSV download: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsDownloadingCsv(false);
     }
   };
 
-
-  // Effect to refetch stats when filters or selectedRepoPath change
   useEffect(() => {
     if (selectedRepoPath) {
       fetchStats(selectedRepoPath, filters);
@@ -163,7 +148,6 @@ export default function Home() {
 
       {selectedRepoPath && (
         <div className="w-full max-w-5xl">
-          {/* Filters Component */}
           {repoStats && repoStats.allContributors && (
               <div className="mb-6">
                   <Filters
@@ -174,7 +158,6 @@ export default function Home() {
               </div>
           )}
 
-          {/* Loading/Error States */}
           {isLoadingStats && (
             <p className="text-center text-gray-600 dark:text-gray-400 py-4">Loading statistics...</p>
           )}
@@ -185,7 +168,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* CSV Download Button and Error */}
           {repoStats && !isLoadingStats && !statsError && (
               <div className="mb-6 text-right">
                   <button
@@ -201,13 +183,11 @@ export default function Home() {
               </div>
           )}
 
-          {/* Statistics Display */}
           {repoStats && !isLoadingStats && !statsError && (
             <div className="space-y-8 mt-6">
               <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Statistics for: <code className='bg-gray-200 dark:bg-gray-700 p-1 rounded text-sm'>{selectedRepoPath}</code></h2>
               <p className="text-gray-700 dark:text-gray-300">Total Commits Analyzed (matching filters): {repoStats.totalCommits}</p>
 
-              {/* Pass handleContributorClick to the table */}
               <ContributorStatsTable 
                 contributors={repoStats.contributors} 
                 onContributorClick={handleContributorClick} 
@@ -216,7 +196,6 @@ export default function Home() {
             </div>
           )}
 
-           {/* Initial state message */}
            {!repoStats && !isLoadingStats && !statsError && selectedRepoPath && (
                 <p className="text-center text-gray-600 dark:text-gray-400 py-4">No statistics loaded. Check filters or repository content.</p>
            )}

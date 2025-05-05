@@ -37,7 +37,7 @@ function generateCsvContent(data: { date: string; commits: number; linesAdded: n
 
 // Helper function to parse git log and aggregate stats per day
 async function parseGitLogForDailyStats(git: SimpleGit, options?: { from?: string; to?: string; author?: string }): Promise<{ date: string; commits: number; linesAdded: number; linesDeleted: number; filesChanged: number }[]> {
-  const logOptions: any = {
+  const logOptions: Record<string, string | null> = {
     '--all': null,
     '--no-merges': null,
     '--numstat': null,
@@ -152,16 +152,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating CSV:', error);
-    let errorMessage = 'Failed to generate CSV file';
-    if (error.message.includes('ENOENT')) {
-        errorMessage = 'Repository path not found or inaccessible.';
-    } else if (error.message.includes('Not a git repository')) {
-        errorMessage = 'The specified path is not a valid Git repository.';
-    }
-    // Return error as JSON
-    return NextResponse.json({ error: errorMessage, details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to generate CSV', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
 

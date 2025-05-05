@@ -28,13 +28,12 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ isValid: false, error: 'Not a valid Git repository' }, { status: 400 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error validating repository:', error);
-    // Distinguish between 'not a repo' and other errors
-    if (error?.message?.includes('not a git repository')) {
-        return NextResponse.json({ isValid: false, error: 'Not a valid Git repository' }, { status: 400 });
-    }
-    return NextResponse.json({ isValid: false, error: 'An error occurred while checking the repository' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to validate repository', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
 

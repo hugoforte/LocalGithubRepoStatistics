@@ -44,23 +44,16 @@ interface CommitLogEntry {
 
 // Helper function to parse git log output for stats
 async function parseGitLog(git: SimpleGit, options?: { from?: string; to?: string; author?: string }): Promise<RepoStats> {
-  const logOptions: any = {
-    '--all': null, // Look at all branches
+  const logOptions: Record<string, string | null> = {
+    '--all': null,
     '--no-merges': null,
-    '--numstat': null, // Provides added/deleted lines per file per commit
-    '--date': 'iso-strict', // Consistent date format
-    // Explicitly define the format to ensure diff stats are parsed if possible
-    // format: '%H%x00%aN%x00%aE%x00%ad%x00%s',
-    // multiLine: true, // Needed if format is used
-    // '--stat': null // Alternative to --numstat, might be parsed differently
+    '--numstat': null,
+    '--date': 'iso-strict',
   };
 
   if (options?.from) logOptions['--since'] = options.from;
   if (options?.to) logOptions['--until'] = options.to;
-  // Author filtering will be done after fetching all logs
 
-  // Fetch the log with the specified options
-  // Cast the result type to include the potential 'diff' property
   const log: LogResult<CommitLogEntry> = await git.log(logOptions) as LogResult<CommitLogEntry>;
 
   const stats: RepoStats = {
@@ -131,7 +124,7 @@ async function parseGitLog(git: SimpleGit, options?: { from?: string; to?: strin
 
   // Convert filesChanged Set to Array length for JSON serialization
   Object.values(stats.contributors).forEach(contrib => {
-    // @ts-ignore - Replace Set with its size
+    // @ts-expect-error - Replace Set with its size
     contrib.filesChanged = contrib.filesChanged.size;
   });
 
@@ -197,16 +190,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(stats);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching Git statistics:', error);
-    // Provide more specific error messages if possible
     let errorMessage = 'Failed to fetch Git statistics';
-    if (error.message.includes('ENOENT')) {
+    if (error instanceof Error) {
+      if (error.message.includes('ENOENT')) {
         errorMessage = 'Repository path not found or inaccessible.';
-    } else if (error.message.includes('Not a git repository')) {
+      } else if (error.message.includes('Not a git repository')) {
         errorMessage = 'The specified path is not a valid Git repository.';
+      }
     }
-    return NextResponse.json({ error: errorMessage, details: error.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage, details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
